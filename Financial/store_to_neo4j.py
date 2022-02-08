@@ -26,20 +26,12 @@ class DataToNeo4j(object):
         for node in tqdm(node_list):
             name = node["name"]
             type = node["type"]
-            labels = dict()
-            for k in node.keys():
-                if k not in labels.keys():
-                    labels.update({k: node[k]})
 
             if not self.matcher.match(type, name=name).first():
                 name_node = Node(type, name=name)
                 for k in node.keys():
-                    if k not in ["name","type"]:
-                        
-
-                if labels:
-                    for k in labels.keys():
-                        name_node[k] = labels[k]
+                    if k not in ["name", "type"]:
+                        name_node[k] = node[k]
 
                 self.graph.create(name_node)
 
@@ -52,7 +44,7 @@ class DataToNeo4j(object):
             ent2 = rel_set[2]
             rel = rel_set[1]
             try:
-                # 投資、訂單關係修正，去冗餘
+                # 投資、訂單關係3修正，去冗餘
                 if ("投資" in rel["name"]) or ("訂單" in rel["name"]):
                     if len(rel["name"]) >= 2:
                         rel["name"] = rel["name"][-2:]
