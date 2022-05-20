@@ -46,9 +46,9 @@ logger = logging.getLogger(__name__)
 
 # Function
 # initial logging
-def init_logger():
+def init_logger(filename):
     logging.basicConfig(
-        filename=f"noproxy_news_2022-01-01_2022-04-13_俄烏戰爭.log",
+        filename=filename,
         filemode="w",
         format="%(asctime)s - %(levelname)s - %(name)s - %(message)s",
         datefmt="%m/%d/%Y %H:%M:%S",
