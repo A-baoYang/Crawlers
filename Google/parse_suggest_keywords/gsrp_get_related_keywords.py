@@ -2,6 +2,7 @@ from bs4 import BeautifulSoup
 import json
 import os
 import requests
+import re
 from time import sleep
 from tqdm import tqdm
 from urllib.parse import urlparse
@@ -92,12 +93,11 @@ related_keywords = {}
 # article_results = {}
 # lv1_keywords = ["高血壓", "高血脂", "高血糖"]
 lv1_keywords = ["海芙音波"]
-target_div_id = 'AB4Wff'
 
 # 抓8層 related keywords
 for lv1_kw in tqdm(lv1_keywords):
     soup = fetch_gsrp(kw=lv1_kw)
-    lv2_kws = [item.text for item in soup.find_all("a", id=target_div_id)]
+    lv2_kws = [item.text for item in soup.find("div", text = re.compile('相關搜尋'))]
     related_keywords.update({lv1_kw: lv2_kws})
 
 store_data(data=related_keywords, filename="3high_gsrp_keywords_lv1.json")
