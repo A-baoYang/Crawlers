@@ -93,11 +93,11 @@ def store_data(data, filename):
 
 related_keywords = {}
 # article_results = {}
-# lv1_keywords = ["高血壓", "高血脂", "高血糖"]
-lv1_keywords = ["海芙音波"]
+# starting_keywords = ["高血壓", "高血脂", "高血糖"]
+starting_keywords = ["海芙音波"]
 starting_kw = "比特幣"
-lv1_keywords = [starting_kw]
-# lv1_keywords = ["生成式AI"]
+starting_keywords = [starting_kw]
+# starting_keywords = ["生成式AI"]
 
 
 def get_related_kw_from_gsrp(lv1_kw, layer_num):
@@ -112,30 +112,34 @@ def get_related_kw_from_gsrp(lv1_kw, layer_num):
     return collect_kws
 
 
-# 要獲取的關鍵字層數
-origin_layer_num = layer_num = 4
-while True:
-    for lv1_kw in tqdm(lv1_keywords):
-        collect_kws = get_related_kw_from_gsrp(lv1_kw, layer_num=origin_layer_num - layer_num + 1)
-        # related_keywords.append({lv1_kw: collect_kws, "layer": origin_layer_num - layer_num + 1})
-        related_keywords.update({lv1_kw: collect_kws})
-    layer_num -= 1
-    if layer_num == 0:
-        break
-    else:
-        lv1_keywords = np.unique(
-            [
-                lv2_kw[0] for lv1_kw in related_keywords.keys() 
-                for lv2_kw in related_keywords[lv1_kw] 
-                if lv2_kw[0] not in related_keywords
-                and len(lv2_kw[0]) >= len(starting_kw)
-            ]
-        )
+def run_keyword_fetch(starting_keywords, layer_num):
+    # 要獲取的關鍵字層數
+    origin_layer_num = layer_num
+    while True:
+        for lv1_kw in tqdm(starting_keywords):
+            collect_kws = get_related_kw_from_gsrp(
+                lv1_kw, layer_num=origin_layer_num - layer_num + 1)
+            # related_keywords.append({lv1_kw: collect_kws, "layer": origin_layer_num - layer_num + 1})
+            related_keywords.update({lv1_kw: collect_kws})
+        layer_num -= 1
+        if layer_num == 0:
+            break
+        else:
+            starting_keywords = np.unique(
+                [
+                    lv2_kw[0] for lv1_kw in related_keywords.keys() 
+                    for lv2_kw in related_keywords[lv1_kw] 
+                    if lv2_kw[0] not in related_keywords
+                    and len(lv2_kw[0]) >= len(lv1_kw)
+                ]
+            )
 
-currdt = arrow.now().format("YYYYMMDDTHHmmss")
-store_data(data=related_keywords, filename=f"gsrp_keywords-{currdt}.json")
+    currdt = arrow.now().format("YYYYMMDDTHHmmss")
+    store_data(data=related_keywords, filename=f"gsrp_keywords-{currdt}.json")
+    return related_keywords
 
-# for lv1_kw in tqdm(lv1_keywords):
+
+# for lv1_kw in tqdm(starting_keywords):
 #     collect_kws = get_related_kw_from_gsrp(lv1_kw)
 #     related_keywords.update({lv1_kw: collect_kws})
 #     for lv2_kw in collect_kws:
