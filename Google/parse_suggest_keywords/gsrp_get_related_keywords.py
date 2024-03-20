@@ -1,9 +1,11 @@
+import arrow
 from bs4 import BeautifulSoup
 import json
 import os
 import requests
 import re
 from time import sleep
+import numpy as np
 from tqdm import tqdm
 from urllib.parse import urlparse
 
@@ -65,7 +67,7 @@ def fetch_gsrp(kw=None, url=None):
     if not url:
         url = f"https://www.google.com/search?q={kw}&oq={kw}&aqs=chrome..69i57j69i65.5309j0j1&sourceid=chrome&ie=UTF-8"
     print(url)
-    sleep(1)
+    sleep(0.5)
     r = requests.get(
         url,
         headers=headers,
@@ -93,36 +95,79 @@ related_keywords = {}
 # article_results = {}
 # lv1_keywords = ["高血壓", "高血脂", "高血糖"]
 lv1_keywords = ["海芙音波"]
+starting_kw = "比特幣"
+lv1_keywords = [starting_kw]
+# lv1_keywords = ["生成式AI"]
 
-# 抓8層 related keywords
-for lv1_kw in tqdm(lv1_keywords):
+
+def get_related_kw_from_gsrp(lv1_kw, layer_num):
     soup = fetch_gsrp(kw=lv1_kw)
-    lv2_kws = [item.text for item in soup.find("div", text = re.compile('相關搜尋'))]
-    related_keywords.update({lv1_kw: lv2_kws})
+    start = soup.find("div", text = re.compile('相關搜尋'))
+    collect_kws = []
+    while start and start.find_next("a"):
+        start = start.find_next("a")
+        if start.text and start.text not in ['更多結果', '再試一次', '影片', '圖片', '新聞', '地圖', '更多']:
+            collect_kws.append((start.text, layer_num))
+    
+    return collect_kws
 
-store_data(data=related_keywords, filename="3high_gsrp_keywords_lv1.json")
 
-for i in range(2, 11):
-    ref_dict = related_keywords.copy()
-    related_keywords = {}
-    for lv1_kw in tqdm(ref_dict.keys()):
-        if ref_dict[lv1_kw]:
-            for lv2_kw in tqdm(ref_dict[lv1_kw]):
-                soup = fetch_gsrp(kw=lv2_kw)
-                try:
-                    lv3_kws = [
-                        item.text
-                        for item in soup.find_all("a", id=target_div_id)
-                    ]
-                except Exception as e:
-                    lv3_kws = []
-                    print(e)
-                    pass
-                finally:
-                    related_keywords.update({lv2_kw: lv3_kws})
-        else:
-            pass
+# 要獲取的關鍵字層數
+origin_layer_num = layer_num = 4
+while True:
+    for lv1_kw in tqdm(lv1_keywords):
+        collect_kws = get_related_kw_from_gsrp(lv1_kw, layer_num=origin_layer_num - layer_num + 1)
+        # related_keywords.append({lv1_kw: collect_kws, "layer": origin_layer_num - layer_num + 1})
+        related_keywords.update({lv1_kw: collect_kws})
+    layer_num -= 1
+    if layer_num == 0:
+        break
+    else:
+        lv1_keywords = np.unique(
+            [
+                lv2_kw[0] for lv1_kw in related_keywords.keys() 
+                for lv2_kw in related_keywords[lv1_kw] 
+                if lv2_kw[0] not in related_keywords
+                and len(lv2_kw[0]) >= len(starting_kw)
+            ]
+        )
 
-    store_data(data=related_keywords, filename=f"3high_gsrp_keywords_lv{i}.json")
+currdt = arrow.now().format("YYYYMMDDTHHmmss")
+store_data(data=related_keywords, filename=f"gsrp_keywords-{currdt}.json")
+
+# for lv1_kw in tqdm(lv1_keywords):
+#     collect_kws = get_related_kw_from_gsrp(lv1_kw)
+#     related_keywords.update({lv1_kw: collect_kws})
+#     for lv2_kw in collect_kws:
+#         collect_kws = get_related_kw_from_gsrp(lv2_kw)
+#         related_keywords.update({lv2_kw: collect_kws})
+#         for lv3_kw in collect_kws:
+#             collect_kws = get_related_kw_from_gsrp(lv3_kw)
+#             related_keywords.update({lv3_kw: collect_kws})
+
+# store_data(data=related_keywords, filename="3high_gsrp_keywords_lv1.json")
+
+# for i in range(2, 11):
+#     ref_dict = related_keywords.copy()
+#     related_keywords = {}
+#     for lv1_kw in tqdm(ref_dict.keys()):
+#         if ref_dict[lv1_kw]:
+#             for lv2_kw in tqdm(ref_dict[lv1_kw]):
+#                 soup = fetch_gsrp(kw=lv2_kw)
+#                 try:
+#                     lv3_kws = [
+#                         item.text
+#                         for item in soup.find_all("a", id=target_div_id)
+#                     ]
+#                 except Exception as e:
+#                     lv3_kws = []
+#                     print(e)
+#                     pass
+#                 finally:
+#                     related_keywords.update({lv2_kw: lv3_kws})
+#         else:
+#             pass
+
+#     store_data(data=related_keywords, filename=f"3high_gsrp_keywords_lv{i}.json")
 
 
